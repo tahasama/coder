@@ -23,11 +23,19 @@ def execute_python(request):
     code = data.get('code', '')
     required_packages = data.get('requiredPackages', [])
 
+    # Function to install packages sequentially
+    def install_packages(packages):
+        for package in packages:
+            if package not in installed_packages:
+                subprocess.run(['pip', 'install', package])
+                installed_packages[package] = True
+
     # Install required packages if not already installed
-    for package in required_packages:
-        if package not in installed_packages:
-            subprocess.run(['pip', 'install', package])
-            installed_packages[package] = True
+    install_packages(required_packages)
+
+    # Check if all required packages are installed
+    if len(installed_packages) < len(required_packages):
+        return JsonResponse({'error': 'Failed to install all required packages.'})
 
     # Check if the code contains any plotting commands
     has_plots = any(('plt.' in line and not '# plt.' in line) or ('sns.' in line and not '# sns.' in line) for line in code.split('\n'))
