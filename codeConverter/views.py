@@ -7,6 +7,10 @@ from matplotlib import pyplot as plt
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 
+
+from keras import backend as K
+K.clear_session()
+
 @csrf_exempt
 def execute_python(request):
     if request.method != 'POST':
