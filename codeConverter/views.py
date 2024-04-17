@@ -101,6 +101,8 @@ def execute_python(request):
     # Return results as JSON response
     return JsonResponse({'result': result, 'result_images': images, 'error': error})
 
+
+
 def is_full_empty_white_image(img_bytes):
     # Convert image bytes to numpy array
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
@@ -110,8 +112,10 @@ def is_full_empty_white_image(img_bytes):
     gray_img = np.mean(img, axis=2)
 
     # Threshold the image to identify white areas
-    white_pixel_percentage = np.sum(gray_img >= 240) / img.size
+    white_pixel_percentage = np.sum(gray_img >= 240) / gray_img.size
 
     # Consider the image as full empty white if more than 99% of pixels are white
     return white_pixel_percentage > 0.99
+
+
 
