@@ -8,6 +8,7 @@ from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 import cv2
 import hashlib
+import time
 
 # Import other necessary modules and clear Keras session
 from keras import backend as K
@@ -19,6 +20,7 @@ installed_packages = {}
 
 # Initialize a dictionary to cache code execution results
 code_cache = {}
+
 @csrf_exempt
 def execute_python(request):
     if request.method != 'POST':
@@ -67,7 +69,7 @@ def execute_python(request):
     try:
         # Set matplotlib backend and execute the code
         with plt.style.context('ggplot'), plt.rc_context({'backend': 'Agg'}):
-            exec(code, globals())
+            exec(code, globals(), locals())
 
             # Collect all figures and encode them as base64
             if has_plots:
@@ -103,7 +105,6 @@ def execute_python(request):
     return JsonResponse({'result': result, 'result_images': images, 'error': error})
 
 
-
 def is_full_empty_white_image(img_bytes):
     # Convert image bytes to numpy array
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
@@ -116,7 +117,4 @@ def is_full_empty_white_image(img_bytes):
     white_pixel_percentage = np.sum(thresh == 255) / img.size
 
     # Consider the image as full empty white if more than 99% of pixels are white
-    return white_pixel_percentage > 0.99 
-
-
-
+    return white_pixel_percentage > 0.99
