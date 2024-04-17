@@ -6,14 +6,18 @@ import io
 from matplotlib import pyplot as plt
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
+import hashlib
 
 # Import other necessary modules and clear Keras session
 from keras import backend as K
+import numpy as np
 K.clear_session()
 
-# Initialize a dictionary to cache installed packages
+# Initialize a dictionary to store installed packages
 installed_packages = {}
 
+# Initialize a dictionary to cache code execution results
+code_cache = {}
 @csrf_exempt
 def execute_python(request):
     if request.method != 'POST':
@@ -43,6 +47,11 @@ def execute_python(request):
         result = "Sorry, the 'input' command is not supported. If you have a variable with name 'input', please change it."
         return JsonResponse({'result': result, 'result_images': [], 'error': ''})
 
+    # Check if code is already cached
+    if code in code_cache:
+        cached_result, cached_images = code_cache[code]
+        return JsonResponse({'result': cached_result, 'result_images': cached_images, 'error': ''})
+
     # Redirect stdout and stderr to string buffers
     stdout_buffer = io.StringIO()
     stderr_buffer = io.StringIO()
@@ -61,11 +70,18 @@ def execute_python(request):
 
             # Collect all figures and encode them as base64
             if has_plots:
+                unique_images = set()  # To store unique image hashes
                 for fig in plt.get_fignums():
                     img_data = io.BytesIO()
                     plt.figure(fig).savefig(img_data, format='png', bbox_inches='tight')
-                    encoded_img = base64.b64encode(img_data.getvalue()).decode('utf-8')
-                    images.append(f"data:image/png;base64,{encoded_img}")
+                    img_bytes = img_data.getvalue()
+                    # Filter out full empty white images
+                    if not is_full_empty_white_image(img_bytes):
+                        img_hash = hashlib.md5(img_bytes).hexdigest()  # Calculate MD5 hash of image bytes
+                        if img_hash not in unique_images:
+                            encoded_img = base64.b64encode(img_bytes).decode('utf-8')
+                            images.append(f"data:image/png;base64,{encoded_img}")
+                            unique_images.add(img_hash)
             plt.clf()  # Clear the current figure after saving all images
 
             # Collect stdout output
@@ -74,13 +90,28 @@ def execute_python(request):
                 result = "No output to display."
 
     except Exception as e:
-        result = ''
         error = str(e)
-        sys.stdout = sys.__stdout__
-        return JsonResponse({'result': result, 'result_images': [], 'error': error})
 
     # Reset stdout
     sys.stdout = sys.__stdout__
 
+    # Cache code execution result
+    code_cache[code] = (result, images)
+
     # Return results as JSON response
     return JsonResponse({'result': result, 'result_images': images, 'error': error})
+
+def is_full_empty_white_image(img_bytes):
+    # Convert image bytes to numpy array
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = plt.imread(io.BytesIO(img_array))
+
+    # Convert the image to grayscale
+    gray_img = np.mean(img, axis=2)
+
+    # Threshold the image to identify white areas
+    white_pixel_percentage = np.sum(gray_img >= 240) / img.size
+
+    # Consider the image as full empty white if more than 99% of pixels are white
+    return white_pixel_percentage > 0.99
+
