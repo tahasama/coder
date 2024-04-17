@@ -1,6 +1,13 @@
 # Base image
 FROM python:3.9-slim
 
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN apt-get update
+RUN apt-get install ffmpeg libsm6 libxext6  -y
+
 # Install pip and gunicorn
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir --upgrade gunicorn

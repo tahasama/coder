@@ -6,6 +6,7 @@ import io
 from matplotlib import pyplot as plt
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
+import cv2
 import hashlib
 
 # Import other necessary modules and clear Keras session
@@ -106,16 +107,16 @@ def execute_python(request):
 def is_full_empty_white_image(img_bytes):
     # Convert image bytes to numpy array
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = plt.imread(io.BytesIO(img_array))
-
-    # Convert the image to grayscale
-    gray_img = np.mean(img, axis=2)
+    img = cv2.imdecode(img_array, cv2.IMREAD_GRAYSCALE)
 
     # Threshold the image to identify white areas
-    white_pixel_percentage = np.sum(gray_img >= 240) / gray_img.size
+    ret, thresh = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY)
+
+    # Calculate the percentage of white pixels
+    white_pixel_percentage = np.sum(thresh == 255) / img.size
 
     # Consider the image as full empty white if more than 99% of pixels are white
-    return white_pixel_percentage > 0.99
+    return white_pixel_percentage > 0.99 
 
 
 
