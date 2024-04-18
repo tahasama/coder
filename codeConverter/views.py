@@ -69,7 +69,7 @@ def execute_python(request):
     try:
         # Set matplotlib backend and execute the code
         with plt.style.context('ggplot'), plt.rc_context({'backend': 'Agg'}):
-            exec(code, globals(), locals())
+            exec(code, globals())
 
             # Collect all figures and encode them as base64
             if has_plots:
@@ -93,7 +93,10 @@ def execute_python(request):
                 result = "No output to display."
 
     except Exception as e:
+        result = ''
         error = str(e)
+        sys.stdout = sys.__stdout__
+        return JsonResponse({'result': result, 'result_images': [], 'error': error})
 
     # Reset stdout
     sys.stdout = sys.__stdout__
